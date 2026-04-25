@@ -31,3 +31,9 @@ Generate with your own prompt:
 ```bash
 python src/generate.py --prompt "hello" --max-new-tokens 40 --temperature 0.8
 ```
+
+Generate with top-k sampling:
+
+```bash
+python src/generate.py --prompt "hello" --max-new-tokens 40 --temperature 0.8 --top-k 5
+```
