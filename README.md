@@ -1,6 +1,6 @@
 # my-ai
 
-my first ai - Phase 1
+My first AI
 
 ## Install
 
@@ -14,8 +14,20 @@ pip install -r requirements.txt
 python src/train.py
 ```
 
+Train with custom settings:
+
+```bash
+python src/train.py --epochs 800 --sequence-length 16
+```
+
 ## Generate
 
 ```bash
 python src/generate.py
+```
+
+Generate with your own prompt:
+
+```bash
+python src/generate.py --prompt "hello" --max-new-tokens 40 --temperature 0.8
 ```

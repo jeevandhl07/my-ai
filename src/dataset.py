@@ -17,17 +17,18 @@ from tokenizer import CharTokenizer
 DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "input.txt"
 
 
-def load_text() -> str:
+def load_text(data_path: Path = DATA_PATH) -> str:
     """Read the raw training text file."""
-    return DATA_PATH.read_text(encoding="utf-8").strip()
+    return data_path.read_text(encoding="utf-8").strip()
 
 
 class TextDataset(Dataset):
     """Create training pairs for a character-level language model."""
 
-    def __init__(self, sequence_length: int = 8) -> None:
+    def __init__(self, sequence_length: int = 8, data_path: Path = DATA_PATH) -> None:
         """Load text, build tokenizer, and prepare training tokens."""
-        self.text = load_text()
+        self.data_path = data_path
+        self.text = load_text(data_path)
         self.tokenizer = CharTokenizer(self.text)
         self.tokens = self.tokenizer.encode(self.text)
         self.sequence_length = sequence_length

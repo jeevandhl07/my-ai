@@ -1,5 +1,6 @@
 """Generate text with the trained character-level model."""
 
+import argparse
 from pathlib import Path
 
 import torch
@@ -10,9 +11,21 @@ from model import SimpleLanguageModel
 CHECKPOINT_PATH = Path(__file__).resolve().parent.parent / "checkpoints" / "simple_lm.pt"
 
 
-def load_checkpoint() -> tuple[SimpleLanguageModel, dict[str, int], dict[int, str]]:
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for text generation."""
+    parser = argparse.ArgumentParser(description="Generate text with the Phase 2 character model.")
+    parser.add_argument("--prompt", type=str, default="hello")
+    parser.add_argument("--max-new-tokens", type=int, default=32)
+    parser.add_argument("--temperature", type=float, default=0.8)
+    parser.add_argument("--checkpoint-path", type=Path, default=CHECKPOINT_PATH)
+    return parser.parse_args()
+
+
+def load_checkpoint(
+    checkpoint_path: Path,
+) -> tuple[SimpleLanguageModel, dict[str, int], dict[int, str]]:
     """Load the saved model and vocabulary mappings."""
-    checkpoint = torch.load(CHECKPOINT_PATH, map_location="cpu")
+    checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
     stoi = checkpoint["stoi"]
     itos = checkpoint["itos"]
@@ -44,9 +57,10 @@ def decode(tokens: list[int], itos: dict[int, str]) -> str:
 
 
 def generate_text(
+    checkpoint_path: Path,
     start_text: str = "hello",
     max_new_tokens: int = 32,
-    temperature: float = 0.7,
+    temperature: float = 0.8,
 ) -> str:
     """Generate new text from a starting prompt.
 
@@ -54,7 +68,10 @@ def generate_text(
     - lower values make output safer and more repetitive
     - higher values make output more varied
     """
-    model, stoi, itos = load_checkpoint()
+    if temperature <= 0:
+        raise ValueError("Temperature must be greater than 0.")
+
+    model, stoi, itos = load_checkpoint(checkpoint_path)
 
     tokens = encode(start_text, stoi)
     if not tokens:
@@ -73,14 +90,20 @@ def generate_text(
             logits = model(x)
 
         next_token_logits = logits[0, -1] / temperature
-        next_token = torch.argmax(next_token_logits).item()
+        probabilities = torch.softmax(next_token_logits, dim=0)
+        next_token = torch.multinomial(probabilities, num_samples=1).item()
         tokens.append(next_token)
 
     return decode(tokens, itos)
 
 
 if __name__ == "__main__":
-    prompt = "hello"
-    output = generate_text(start_text=prompt, max_new_tokens=32, temperature=0.7)
-    print(f"Prompt: {prompt}")
+    args = parse_args()
+    output = generate_text(
+        checkpoint_path=args.checkpoint_path.resolve(),
+        start_text=args.prompt,
+        max_new_tokens=args.max_new_tokens,
+        temperature=args.temperature,
+    )
+    print(f"Prompt: {args.prompt}")
     print(f"Generated: {output}")
