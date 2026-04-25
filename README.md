@@ -2,6 +2,8 @@
 
 My first AI
 
+Current training accuracy: 96%
+
 ## Install
 
 ```bash

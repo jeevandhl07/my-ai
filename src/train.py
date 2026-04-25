@@ -69,6 +69,28 @@ def validate_resume_checkpoint(
             )
 
 
+def calculate_accuracy(
+    model: SimpleLanguageModel,
+    dataloader: DataLoader,
+) -> float:
+    """Measure next-character accuracy on the available dataset."""
+    model.eval()
+    correct_predictions = 0
+    total_predictions = 0
+
+    with torch.no_grad():
+        for inputs, targets in dataloader:
+            logits = model(inputs)
+            predicted_tokens = torch.argmax(logits, dim=-1)
+            correct_predictions += (predicted_tokens == targets).sum().item()
+            total_predictions += targets.numel()
+
+    model.train()
+    if total_predictions == 0:
+        return 0.0
+    return correct_predictions / total_predictions
+
+
 def train(args: argparse.Namespace) -> None:
     """Train the model for a few epochs and save the checkpoint."""
     set_seed(args.seed)
@@ -139,6 +161,7 @@ def train(args: argparse.Namespace) -> None:
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     completed_epochs = epoch + 1 if args.epochs > 0 else 0
     total_epochs_trained += completed_epochs
+    train_accuracy = calculate_accuracy(model, dataloader)
     torch.save(
         {
             "model_state_dict": model.state_dict(),
@@ -156,9 +179,11 @@ def train(args: argparse.Namespace) -> None:
             "last_epoch": start_epoch + completed_epochs,
             "batch_size": args.batch_size,
             "learning_rate": args.learning_rate,
+            "train_accuracy": train_accuracy,
         },
         checkpoint_path,
     )
+    print(f"Training accuracy: {train_accuracy * 100:.2f}%")
     print(f"Model saved to: {checkpoint_path}")
 
 

@@ -107,6 +107,7 @@ def format_checkpoint_info(checkpoint: dict, checkpoint_path: Path) -> str:
         f"last epoch: {checkpoint.get('last_epoch', 'n/a')}",
         f"batch size: {checkpoint.get('batch_size', 'n/a')}",
         f"learning rate: {checkpoint.get('learning_rate', 'n/a')}",
+        f"training accuracy: {checkpoint.get('train_accuracy', 'n/a')}",
     ]
     return "\n".join(lines)
 
