@@ -16,8 +16,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate text with the character model.")
     parser.add_argument("--prompt", type=str, default=None)
     parser.add_argument("--max-new-tokens", type=int, default=32)
-    parser.add_argument("--temperature", type=float, default=0.8)
-    parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument("--temperature", type=float, default=0.6)
+    parser.add_argument("--top-k", type=int, default=3)
     parser.add_argument("--checkpoint-path", type=Path, default=CHECKPOINT_PATH)
     parser.add_argument("--show-info", action="store_true")
     return parser.parse_args()
@@ -91,6 +91,68 @@ def resolve_prompt(prompt: str | None) -> str:
     if not typed_prompt:
         raise ValueError("Prompt cannot be empty.")
     return typed_prompt
+
+
+def normalize_prompt(prompt: str) -> str:
+    """Normalize prompt text to match the tiny training corpus better."""
+    return prompt.strip().lower()
+
+
+def load_training_text(checkpoint: dict) -> str:
+    """Load the training text when the checkpoint knows where it came from."""
+    data_path = checkpoint.get("data_path")
+    if not data_path:
+        return ""
+
+    path = Path(data_path)
+    if not path.exists():
+        return ""
+
+    return path.read_text(encoding="utf-8").strip().lower()
+
+
+def choose_seed_prompt(prompt: str, checkpoint: dict, stoi: dict[str, int]) -> str:
+    """Choose a more stable seed prompt for tiny-dataset generation.
+
+    The current model learns from a very small training sentence, so prompts that
+    are too short or not present in that sentence work better when we anchor them
+    to a nearby known word from the training data.
+    """
+    training_text = load_training_text(checkpoint)
+    if not training_text:
+        filtered = "".join(char for char in prompt if char in stoi)
+        return filtered or "hello"
+
+    filtered_prompt = "".join(char for char in prompt if char in stoi)
+    if not filtered_prompt:
+        return "hello"
+
+    if filtered_prompt in training_text:
+        return filtered_prompt
+
+    words = training_text.split()
+    best_word = ""
+    best_score = -1
+
+    for word in words:
+        score = 0
+        if filtered_prompt and word.startswith(filtered_prompt[0]):
+            score += 3
+        score += len(set(filtered_prompt) & set(word))
+        if filtered_prompt in word or word in filtered_prompt:
+            score += 2
+
+        if score > best_score:
+            best_score = score
+            best_word = word
+
+    if len(filtered_prompt) <= 2:
+        return best_word or filtered_prompt
+
+    if best_word and filtered_prompt[0] == best_word[0]:
+        return filtered_prompt
+
+    return best_word or filtered_prompt
 
 
 def format_checkpoint_info(checkpoint: dict, checkpoint_path: Path) -> str:
@@ -168,13 +230,14 @@ if __name__ == "__main__":
         print(format_checkpoint_info(checkpoint, checkpoint_path))
         raise SystemExit(0)
 
-    prompt = resolve_prompt(args.prompt)
+    prompt = normalize_prompt(resolve_prompt(args.prompt))
     if args.temperature <= 0:
         raise ValueError("Temperature must be greater than 0.")
     if args.top_k < 0:
         raise ValueError("top_k must be 0 or greater.")
 
-    tokens = encode(prompt, stoi)
+    seed_prompt = choose_seed_prompt(prompt, checkpoint, stoi)
+    tokens = encode(seed_prompt, stoi)
     if not tokens:
         raise ValueError("Prompt does not contain any known characters from the training data.")
 
@@ -199,4 +262,6 @@ if __name__ == "__main__":
 
     output = decode(tokens, itos)
     print(f"Prompt: {prompt}")
+    if seed_prompt != prompt:
+        print(f"Seed used: {seed_prompt}")
     print(f"Generated: {output}")

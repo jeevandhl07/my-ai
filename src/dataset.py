@@ -19,7 +19,8 @@ DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "input.txt"
 
 def load_text(data_path: Path = DATA_PATH) -> str:
     """Read the raw training text file."""
-    return data_path.read_text(encoding="utf-8").strip()
+    raw_text = data_path.read_text(encoding="utf-8")
+    return " ".join(raw_text.split())
 
 
 class TextDataset(Dataset):
