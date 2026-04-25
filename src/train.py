@@ -2,6 +2,7 @@
 
 import argparse
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -45,6 +46,29 @@ def load_existing_checkpoint(checkpoint_path: Path) -> dict | None:
     return torch.load(checkpoint_path, map_location="cpu")
 
 
+def validate_resume_checkpoint(
+    checkpoint: dict[str, Any],
+    args: argparse.Namespace,
+    dataset: TextDataset,
+    data_path: Path,
+) -> None:
+    """Ensure a checkpoint matches the current training configuration."""
+    expected = {
+        "vocab_size": dataset.tokenizer.vocab_size,
+        "sequence_length": args.sequence_length,
+        "embed_dim": args.embed_dim,
+        "hidden_dim": args.hidden_dim,
+        "data_path": str(data_path),
+    }
+
+    for key, value in expected.items():
+        stored_value = checkpoint.get(key)
+        if stored_value is not None and stored_value != value:
+            raise ValueError(
+                f"Cannot resume: checkpoint {key} is {stored_value}, but current run expects {value}."
+            )
+
+
 def train(args: argparse.Namespace) -> None:
     """Train the model for a few epochs and save the checkpoint."""
     set_seed(args.seed)
@@ -68,12 +92,20 @@ def train(args: argparse.Namespace) -> None:
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     loss_fn = nn.CrossEntropyLoss()
+    start_epoch = 0
+    total_epochs_trained = 0
 
     if existing_checkpoint is not None:
+        validate_resume_checkpoint(existing_checkpoint, args, dataset, data_path)
         model.load_state_dict(existing_checkpoint["model_state_dict"])
+        optimizer_state = existing_checkpoint.get("optimizer_state_dict")
+        if optimizer_state is not None:
+            optimizer.load_state_dict(optimizer_state)
+        start_epoch = existing_checkpoint.get("last_epoch", 0)
+        total_epochs_trained = existing_checkpoint.get("epochs_trained", start_epoch)
         print(f"Resuming from: {checkpoint_path}")
 
-    best_loss = float("inf")
+    best_loss = existing_checkpoint.get("best_loss", float("inf")) if existing_checkpoint else float("inf")
 
     for epoch in range(args.epochs):
         total_loss = 0.0
@@ -94,19 +126,23 @@ def train(args: argparse.Namespace) -> None:
 
         average_loss = total_loss / max(1, len(dataloader))
         best_loss = min(best_loss, average_loss)
+        current_epoch = start_epoch + epoch + 1
 
-        if (epoch + 1) % 50 == 0 or epoch == 0:
-            print(f"Epoch {epoch + 1}/{args.epochs} - Loss: {average_loss:.4f}")
+        if current_epoch % 50 == 0 or epoch == 0:
+            print(f"Epoch {current_epoch} - Loss: {average_loss:.4f}")
 
         # Stop early once the model has mostly memorized this tiny training text.
         if average_loss < 0.015:
-            print(f"Early stopping at epoch {epoch + 1} with loss {average_loss:.4f}")
+            print(f"Early stopping at epoch {current_epoch} with loss {average_loss:.4f}")
             break
 
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    completed_epochs = epoch + 1 if args.epochs > 0 else 0
+    total_epochs_trained += completed_epochs
     torch.save(
         {
             "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
             "stoi": dataset.tokenizer.stoi,
             "itos": dataset.tokenizer.itos,
             "vocab_size": dataset.tokenizer.vocab_size,
@@ -116,7 +152,8 @@ def train(args: argparse.Namespace) -> None:
             "best_loss": best_loss,
             "data_path": str(data_path),
             "seed": args.seed,
-            "epochs_trained": args.epochs,
+            "epochs_trained": total_epochs_trained,
+            "last_epoch": start_epoch + completed_epochs,
             "batch_size": args.batch_size,
             "learning_rate": args.learning_rate,
         },

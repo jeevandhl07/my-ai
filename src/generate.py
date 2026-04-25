@@ -104,6 +104,7 @@ def format_checkpoint_info(checkpoint: dict, checkpoint_path: Path) -> str:
         f"best loss: {checkpoint.get('best_loss', 'n/a')}",
         f"training data: {checkpoint.get('data_path', 'n/a')}",
         f"epochs trained: {checkpoint.get('epochs_trained', 'n/a')}",
+        f"last epoch: {checkpoint.get('last_epoch', 'n/a')}",
         f"batch size: {checkpoint.get('batch_size', 'n/a')}",
         f"learning rate: {checkpoint.get('learning_rate', 'n/a')}",
     ]
@@ -160,19 +161,41 @@ def generate_text(
 if __name__ == "__main__":
     args = parse_args()
     checkpoint_path = args.checkpoint_path.resolve()
-    checkpoint, _, _, _ = load_checkpoint(checkpoint_path)
+    checkpoint, model, stoi, itos = load_checkpoint(checkpoint_path)
 
     if args.show_info:
         print(format_checkpoint_info(checkpoint, checkpoint_path))
         raise SystemExit(0)
 
     prompt = resolve_prompt(args.prompt)
-    output = generate_text(
-        checkpoint_path=checkpoint_path,
-        start_text=prompt,
-        max_new_tokens=args.max_new_tokens,
-        temperature=args.temperature,
-        top_k=args.top_k,
-    )
+    if args.temperature <= 0:
+        raise ValueError("Temperature must be greater than 0.")
+    if args.top_k < 0:
+        raise ValueError("top_k must be 0 or greater.")
+
+    tokens = encode(prompt, stoi)
+    if not tokens:
+        raise ValueError("Prompt does not contain any known characters from the training data.")
+
+    for _ in range(args.max_new_tokens):
+        context_window = tokens[-model.sequence_length :]
+        if len(context_window) < model.sequence_length:
+            pad_token = tokens[0]
+            padding = [pad_token] * (model.sequence_length - len(context_window))
+            context_window = padding + context_window
+
+        x = torch.tensor([context_window], dtype=torch.long)
+
+        with torch.no_grad():
+            logits = model(x)
+
+        next_token = sample_next_token(
+            next_token_logits=logits[0, -1],
+            temperature=args.temperature,
+            top_k=args.top_k,
+        )
+        tokens.append(next_token)
+
+    output = decode(tokens, itos)
     print(f"Prompt: {prompt}")
     print(f"Generated: {output}")
