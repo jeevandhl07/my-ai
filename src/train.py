@@ -24,7 +24,7 @@ def set_seed(seed: int = 42) -> None:
 
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments for training."""
-    parser = argparse.ArgumentParser(description="Train the Phase 2 character model.")
+    parser = argparse.ArgumentParser(description="Train the character model.")
     parser.add_argument("--data-path", type=Path, default=Path("data/input.txt"))
     parser.add_argument("--sequence-length", type=int, default=12)
     parser.add_argument("--batch-size", type=int, default=8)
@@ -34,7 +34,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=1500)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--checkpoint-path", type=Path, default=Path("checkpoints/simple_lm.pt"))
+    parser.add_argument("--resume", action="store_true")
     return parser.parse_args()
+
+
+def load_existing_checkpoint(checkpoint_path: Path) -> dict | None:
+    """Load an existing checkpoint if one is available."""
+    if not checkpoint_path.exists():
+        return None
+    return torch.load(checkpoint_path, map_location="cpu")
 
 
 def train(args: argparse.Namespace) -> None:
@@ -44,6 +52,7 @@ def train(args: argparse.Namespace) -> None:
     data_path = args.data_path.resolve()
     checkpoint_path = args.checkpoint_path.resolve()
     checkpoint_dir = checkpoint_path.parent
+    existing_checkpoint = load_existing_checkpoint(checkpoint_path) if args.resume else None
 
     dataset = TextDataset(
         sequence_length=args.sequence_length,
@@ -59,6 +68,10 @@ def train(args: argparse.Namespace) -> None:
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     loss_fn = nn.CrossEntropyLoss()
+
+    if existing_checkpoint is not None:
+        model.load_state_dict(existing_checkpoint["model_state_dict"])
+        print(f"Resuming from: {checkpoint_path}")
 
     best_loss = float("inf")
 
@@ -103,6 +116,9 @@ def train(args: argparse.Namespace) -> None:
             "best_loss": best_loss,
             "data_path": str(data_path),
             "seed": args.seed,
+            "epochs_trained": args.epochs,
+            "batch_size": args.batch_size,
+            "learning_rate": args.learning_rate,
         },
         checkpoint_path,
     )

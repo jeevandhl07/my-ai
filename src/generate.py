@@ -19,12 +19,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--checkpoint-path", type=Path, default=CHECKPOINT_PATH)
+    parser.add_argument("--show-info", action="store_true")
     return parser.parse_args()
 
 
 def load_checkpoint(
     checkpoint_path: Path,
-) -> tuple[SimpleLanguageModel, dict[str, int], dict[int, str]]:
+) -> tuple[dict, SimpleLanguageModel, dict[str, int], dict[int, str]]:
     """Load the saved model and vocabulary mappings."""
     if not checkpoint_path.exists():
         raise FileNotFoundError(
@@ -49,7 +50,7 @@ def load_checkpoint(
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
-    return model, stoi, itos
+    return checkpoint, model, stoi, itos
 
 
 def encode(text: str, stoi: dict[str, int]) -> list[int]:
@@ -92,6 +93,23 @@ def resolve_prompt(prompt: str | None) -> str:
     return typed_prompt
 
 
+def format_checkpoint_info(checkpoint: dict, checkpoint_path: Path) -> str:
+    """Return a readable summary of the saved model settings."""
+    lines = [
+        f"checkpoint: {checkpoint_path}",
+        f"vocab size: {checkpoint['vocab_size']}",
+        f"sequence length: {checkpoint['sequence_length']}",
+        f"embedding size: {checkpoint['embed_dim']}",
+        f"hidden size: {checkpoint['hidden_dim']}",
+        f"best loss: {checkpoint.get('best_loss', 'n/a')}",
+        f"training data: {checkpoint.get('data_path', 'n/a')}",
+        f"epochs trained: {checkpoint.get('epochs_trained', 'n/a')}",
+        f"batch size: {checkpoint.get('batch_size', 'n/a')}",
+        f"learning rate: {checkpoint.get('learning_rate', 'n/a')}",
+    ]
+    return "\n".join(lines)
+
+
 def generate_text(
     checkpoint_path: Path,
     start_text: str = "hello",
@@ -110,7 +128,7 @@ def generate_text(
     if top_k < 0:
         raise ValueError("top_k must be 0 or greater.")
 
-    model, stoi, itos = load_checkpoint(checkpoint_path)
+    _, model, stoi, itos = load_checkpoint(checkpoint_path)
 
     tokens = encode(start_text, stoi)
     if not tokens:
@@ -141,9 +159,16 @@ def generate_text(
 
 if __name__ == "__main__":
     args = parse_args()
+    checkpoint_path = args.checkpoint_path.resolve()
+    checkpoint, _, _, _ = load_checkpoint(checkpoint_path)
+
+    if args.show_info:
+        print(format_checkpoint_info(checkpoint, checkpoint_path))
+        raise SystemExit(0)
+
     prompt = resolve_prompt(args.prompt)
     output = generate_text(
-        checkpoint_path=args.checkpoint_path.resolve(),
+        checkpoint_path=checkpoint_path,
         start_text=prompt,
         max_new_tokens=args.max_new_tokens,
         temperature=args.temperature,
