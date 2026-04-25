@@ -1,6 +1,6 @@
 # my-ai
 
-My first AI - Phase 1
+my first ai - Phase 1
 
 ## Install
 
