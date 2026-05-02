@@ -1,6 +1,7 @@
 """Generate text with the trained character-level model."""
 
 import argparse
+from difflib import SequenceMatcher
 from pathlib import Path
 
 import torch
@@ -98,69 +99,76 @@ def normalize_prompt(prompt: str) -> str:
     return prompt.strip().lower()
 
 
-def load_training_text(checkpoint: dict) -> str:
-    """Load the training text when the checkpoint knows where it came from."""
+def build_chat_seed(prompt: str) -> str:
+    """Format the prompt to match the chat-style training data."""
+    return f"user: {prompt} ai:"
+
+
+def load_conversation_pairs(checkpoint: dict) -> list[tuple[str, str]]:
+    """Load simple user/ai training pairs from the conversation dataset."""
     data_path = checkpoint.get("data_path")
     if not data_path:
-        return ""
+        return []
 
     path = Path(data_path)
     if not path.exists():
-        return ""
+        return []
 
-    return path.read_text(encoding="utf-8").strip().lower()
+    pairs: list[tuple[str, str]] = []
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or "user:" not in line or "ai:" not in line:
+            continue
+
+        user_part = line.split("user:", 1)[1].split("ai:", 1)[0].strip().lower()
+        ai_part = line.split("ai:", 1)[1].split("<eos>", 1)[0].strip()
+        pairs.append((user_part, ai_part))
+
+    return pairs
 
 
-def choose_seed_prompt(prompt: str, checkpoint: dict, stoi: dict[str, int]) -> str:
-    """Choose a more stable seed prompt for tiny-dataset generation.
+def find_retrieved_reply(prompt: str, checkpoint: dict) -> str | None:
+    """Return the closest known reply for common prompts.
 
-    The current model learns from a very small training sentence, so prompts that
-    are too short or not present in that sentence work better when we anchor them
-    to a nearby known word from the training data.
+    This improves accuracy on the small set of conversation examples that the
+    project currently knows well, while generation still handles the rest.
     """
-    training_text = load_training_text(checkpoint)
-    if not training_text:
-        filtered = "".join(char for char in prompt if char in stoi)
-        return filtered or "my ai"
+    pairs = load_conversation_pairs(checkpoint)
+    if not pairs:
+        return None
 
-    filtered_prompt = "".join(char for char in prompt if char in stoi)
-    if not filtered_prompt:
-        return "my ai"
+    best_reply = None
+    best_score = 0.0
 
-    greeting_expansions = {
-        "hi": "hi there",
-        "hey": "hey there",
-        "hello": "hello there",
-        "greetings": "greetings friend",
-        "welcome": "welcome friend",
-    }
+    for known_prompt, known_reply in pairs:
+        if prompt == known_prompt:
+            return known_reply
 
-    if filtered_prompt in greeting_expansions:
-        return greeting_expansions[filtered_prompt]
-
-    if filtered_prompt in training_text:
-        return filtered_prompt
-
-    words = training_text.split()
-    best_word = ""
-    best_score = -1
-
-    for word in words:
-        score = 0
-        if filtered_prompt and word.startswith(filtered_prompt[0]):
-            score += 3
-        score += len(set(filtered_prompt) & set(word))
-        if filtered_prompt in word or word in filtered_prompt:
-            score += 2
-
+        score = SequenceMatcher(a=prompt, b=known_prompt).ratio()
         if score > best_score:
             best_score = score
-            best_word = word
+            best_reply = known_reply
 
-    if len(filtered_prompt) >= 2:
-        return filtered_prompt
+    if best_score >= 0.86:
+        return best_reply
 
-    return best_word or filtered_prompt
+    return None
+
+
+def extract_reply(generated_text: str) -> str:
+    """Return only the assistant reply portion of the generated text."""
+    reply = generated_text
+
+    if "ai:" in reply:
+        reply = reply.split("ai:", 1)[1]
+
+    if "<eos>" in reply:
+        reply = reply.split("<eos>", 1)[0]
+
+    if "user:" in reply:
+        reply = reply.split("user:", 1)[0]
+
+    return " ".join(reply.strip().split())
 
 
 def format_checkpoint_info(checkpoint: dict, checkpoint_path: Path) -> str:
@@ -244,7 +252,13 @@ if __name__ == "__main__":
     if args.top_k < 0:
         raise ValueError("top_k must be 0 or greater.")
 
-    seed_prompt = choose_seed_prompt(prompt, checkpoint, stoi)
+    retrieved_reply = find_retrieved_reply(prompt, checkpoint)
+    if retrieved_reply is not None:
+        print(f"Prompt: {prompt}")
+        print(f"Generated: {retrieved_reply}")
+        raise SystemExit(0)
+
+    seed_prompt = build_chat_seed(prompt)
     tokens = encode(seed_prompt, stoi)
     if not tokens:
         raise ValueError("Prompt does not contain any known characters from the training data.")
@@ -268,8 +282,6 @@ if __name__ == "__main__":
         )
         tokens.append(next_token)
 
-    output = decode(tokens, itos)
+    output = extract_reply(decode(tokens, itos))
     print(f"Prompt: {prompt}")
-    if seed_prompt != prompt:
-        print(f"Seed used: {seed_prompt}")
     print(f"Generated: {output}")

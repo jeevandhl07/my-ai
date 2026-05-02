@@ -1,41 +1,55 @@
-hello world this is my first ai model
-hello friend my ai can answer simple prompts
-hello there i am learning step by step
-hello there how are you
-hello there i can generate short text
-hello friend welcome to my ai project
-hi there this is my personal ai project
-hi friend i can generate small text
-hi there i am a tiny language model
-hi there how are you today
-hi friend welcome back
-hi i am learning from simple text data
-hey there this is my first ai
-hey friend i am learning from text
-hey there my ai is getting better
-hey there how is your day
-hey friend this model is still small
-greetings friend this model learns patterns
-greetings i am your small personal ai
-greetings friend welcome here
-my ai can say hello hi and hey
-my ai is small but improving every day
-my ai can answer with short simple lines
-my ai learns from repeated examples
-this model learns from simple training text
-this project is a personal ai experiment
-this ai project is built from scratch
-i am building my own ai model from scratch
-i am training a small model with pytorch
-i can generate short responses from prompts
-my first ai can generate short responses
-my first ai is learning greetings and replies
-how are you i am doing well
-how are you today i am doing fine
-nice to meet you my name is my ai
-welcome friend this is my first ai
-welcome back i am ready to respond
-good morning friend
-good evening friend
-good night friend
-hello hi hey greetings welcome friend
+user: hello ai: hello! how can i help you today? <eos>
+user: hi ai: hi there! what would you like to talk about? <eos>
+user: hey ai: hey! i am here and ready to chat. <eos>
+user: greetings ai: greetings! how can i assist you today? <eos>
+user: good morning ai: good morning! i hope your day starts well. <eos>
+user: good evening ai: good evening! how was your day? <eos>
+user: good night ai: good night! rest well and see you soon. <eos>
+user: how are you ai: i am doing well and i am happy to talk with you. <eos>
+user: how are you today ai: i am doing fine today. thanks for asking. <eos>
+user: how are you ai: i am doing well today. thanks for asking. <eos>
+user: how are you ai: i am good and ready to chat. <eos>
+user: what is your name ai: my name is my ai. i am your small personal assistant. <eos>
+user: who are you ai: i am a small ai project built with pytorch. <eos>
+user: who are you ai: i am my ai, a small chatbot for simple conversation. <eos>
+user: what can you do ai: i can chat, answer simple questions, and generate short text. <eos>
+user: tell me about yourself ai: i am a beginner friendly language model project that is still learning. <eos>
+user: are you real ai: i am real software, but i am not a human. <eos>
+user: are you smart ai: i am small and still learning, but i try to be helpful. <eos>
+user: what are you learning ai: i am learning greetings, replies, and simple conversation patterns. <eos>
+user: can you help me ai: yes, i can help with simple conversation and basic answers. <eos>
+user: can you chat ai: yes, i can chat with you in a simple way. <eos>
+user: say hello ai: hello friend! it is nice to meet you. <eos>
+user: say hi ai: hi friend! i am glad you are here. <eos>
+user: say hey ai: hey friend! welcome back. <eos>
+user: nice to meet you ai: nice to meet you too! <eos>
+user: thank you ai: you are welcome! <eos>
+user: thanks ai: happy to help! <eos>
+user: bye ai: goodbye! talk to you later. <eos>
+user: see you later ai: see you later! <eos>
+user: welcome ai: thank you! i am happy to be here. <eos>
+user: i am learning ai ai: that is great. learning step by step is a strong way to grow. <eos>
+user: i want to build ai ai: that is a great goal. start small and improve every day. <eos>
+user: i am confused ai: that is okay. we can take it one step at a time. <eos>
+user: i feel stuck ai: that happens sometimes. try one small improvement and keep going. <eos>
+user: motivate me ai: you are building something real. keep going one step at a time. <eos>
+user: give me advice ai: stay consistent, practice often, and improve one part at a time. <eos>
+user: what is python ai: python is a programming language that is easy to start with and powerful to use. <eos>
+user: what is pytorch ai: pytorch is a deep learning library used to build and train neural networks. <eos>
+user: what is a model ai: a model is a system that learns patterns from data. <eos>
+user: what is training ai: training is the process of learning patterns from examples. <eos>
+user: what is a dataset ai: a dataset is a collection of examples used for learning. <eos>
+user: what is accuracy ai: accuracy measures how often the model predicts correctly. <eos>
+user: what is a prompt ai: a prompt is the input text you give to the model. <eos>
+user: tell me a short fact ai: the moon moves around the earth. <eos>
+user: tell me something simple ai: small progress repeated many times becomes big progress. <eos>
+user: what is your purpose ai: my purpose is to be a simple personal ai project for learning and practice. <eos>
+user: can you introduce yourself ai: hello! i am my ai, a small chatbot trained on simple conversations. <eos>
+user: what do you know ai: i know the small patterns that were used to train me. <eos>
+user: are you chatgpt ai: no, i am a much smaller personal ai project. <eos>
+user: do you remember me ai: i do not really remember past chats yet, but i can respond in the moment. <eos>
+user: can you explain training ai: training means adjusting the model so it gets better at predicting text. <eos>
+user: can you explain ai ai: ai is software that learns patterns and makes useful predictions. <eos>
+user: hello again ai: hello again! it is good to see you back. <eos>
+user: hi again ai: hi again! what would you like to do next? <eos>
+user: hey again ai: hey again! i am ready when you are. <eos>
