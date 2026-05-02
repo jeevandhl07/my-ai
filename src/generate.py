@@ -237,51 +237,53 @@ def generate_text(
     return decode(tokens, itos)
 
 
+def generate_reply(
+    checkpoint_path: Path,
+    prompt: str,
+    max_new_tokens: int = 32,
+    temperature: float = 0.6,
+    top_k: int = 3,
+) -> str:
+    """Return one assistant reply for a chat-style prompt."""
+    checkpoint, _, _, _ = load_checkpoint(checkpoint_path)
+    normalized_prompt = normalize_prompt(prompt)
+
+    retrieved_reply = find_retrieved_reply(normalized_prompt, checkpoint)
+    if retrieved_reply is not None:
+        return retrieved_reply
+
+    seed_prompt = build_chat_seed(normalized_prompt)
+    generated_text = generate_text(
+        checkpoint_path=checkpoint_path,
+        start_text=seed_prompt,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        top_k=top_k,
+    )
+    return extract_reply(generated_text)
+
+
 if __name__ == "__main__":
     args = parse_args()
     checkpoint_path = args.checkpoint_path.resolve()
-    checkpoint, model, stoi, itos = load_checkpoint(checkpoint_path)
+    checkpoint, _, _, _ = load_checkpoint(checkpoint_path)
 
     if args.show_info:
         print(format_checkpoint_info(checkpoint, checkpoint_path))
         raise SystemExit(0)
 
-    prompt = normalize_prompt(resolve_prompt(args.prompt))
+    prompt = resolve_prompt(args.prompt)
     if args.temperature <= 0:
         raise ValueError("Temperature must be greater than 0.")
     if args.top_k < 0:
         raise ValueError("top_k must be 0 or greater.")
 
-    retrieved_reply = find_retrieved_reply(prompt, checkpoint)
-    if retrieved_reply is not None:
-        print(f"Prompt: {prompt}")
-        print(f"Generated: {retrieved_reply}")
-        raise SystemExit(0)
-
-    seed_prompt = build_chat_seed(prompt)
-    tokens = encode(seed_prompt, stoi)
-    if not tokens:
-        raise ValueError("Prompt does not contain any known characters from the training data.")
-
-    for _ in range(args.max_new_tokens):
-        context_window = tokens[-model.sequence_length :]
-        if len(context_window) < model.sequence_length:
-            pad_token = tokens[0]
-            padding = [pad_token] * (model.sequence_length - len(context_window))
-            context_window = padding + context_window
-
-        x = torch.tensor([context_window], dtype=torch.long)
-
-        with torch.no_grad():
-            logits = model(x)
-
-        next_token = sample_next_token(
-            next_token_logits=logits[0, -1],
-            temperature=args.temperature,
-            top_k=args.top_k,
-        )
-        tokens.append(next_token)
-
-    output = extract_reply(decode(tokens, itos))
-    print(f"Prompt: {prompt}")
+    output = generate_reply(
+        checkpoint_path=checkpoint_path,
+        prompt=prompt,
+        max_new_tokens=args.max_new_tokens,
+        temperature=args.temperature,
+        top_k=args.top_k,
+    )
+    print(f"Prompt: {normalize_prompt(prompt)}")
     print(f"Generated: {output}")
