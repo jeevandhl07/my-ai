@@ -14,7 +14,7 @@ from model import SimpleLanguageModel
 
 
 CHECKPOINT_DIR = Path(__file__).resolve().parent.parent / "checkpoints"
-CHECKPOINT_PATH = CHECKPOINT_DIR / "simple_lm.pt"
+CHECKPOINT_PATH = CHECKPOINT_DIR / "ultrachat_lm.pt"
 
 
 def set_seed(seed: int = 42) -> None:
@@ -34,7 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=0.003)
     parser.add_argument("--epochs", type=int, default=1500)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--checkpoint-path", type=Path, default=Path("checkpoints/simple_lm.pt"))
+    parser.add_argument("--checkpoint-path", type=Path, default=Path("checkpoints/ultrachat_lm.pt"))
     parser.add_argument("--resume", action="store_true")
     return parser.parse_args()
 

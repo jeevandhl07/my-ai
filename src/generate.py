@@ -9,7 +9,8 @@ import torch
 from model import SimpleLanguageModel
 
 
-CHECKPOINT_PATH = Path(__file__).resolve().parent.parent / "checkpoints" / "simple_lm.pt"
+CHECKPOINT_PATH = Path(__file__).resolve().parent.parent / "checkpoints" / "personal_ai_checkpoint.pt"
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 def parse_args() -> argparse.Namespace:
@@ -104,14 +105,37 @@ def build_chat_seed(prompt: str) -> str:
     return f"user: {prompt} ai:"
 
 
-def load_conversation_pairs(checkpoint: dict) -> list[tuple[str, str]]:
-    """Load simple user/ai training pairs from the conversation dataset."""
+def resolve_data_path(checkpoint: dict, checkpoint_path: Path) -> Path | None:
+    """Choose the dataset file that best matches the selected checkpoint."""
+    filename = checkpoint_path.name
+    checkpoint_map = {
+        "personal_ai_checkpoint.pt": DATA_DIR / "personal_input.txt",
+        "ultrachat_lm.pt": DATA_DIR / "ultrachat_input.txt",
+        "merged_ai_checkpoint.pt": DATA_DIR / "merged_input.txt",
+    }
+
+    mapped_path = checkpoint_map.get(filename)
+    if mapped_path and mapped_path.exists():
+        return mapped_path
+
     data_path = checkpoint.get("data_path")
     if not data_path:
-        return []
+        return None
 
-    path = Path(data_path)
-    if not path.exists():
+    resolved = Path(data_path)
+    if resolved.exists():
+        return resolved
+
+    return None
+
+
+def load_conversation_pairs(
+    checkpoint: dict,
+    checkpoint_path: Path,
+) -> list[tuple[str, str]]:
+    """Load simple user/ai training pairs from the conversation dataset."""
+    path = resolve_data_path(checkpoint, checkpoint_path)
+    if path is None:
         return []
 
     pairs: list[tuple[str, str]] = []
@@ -127,13 +151,17 @@ def load_conversation_pairs(checkpoint: dict) -> list[tuple[str, str]]:
     return pairs
 
 
-def find_retrieved_reply(prompt: str, checkpoint: dict) -> str | None:
+def find_retrieved_reply(
+    prompt: str,
+    checkpoint: dict,
+    checkpoint_path: Path,
+) -> str | None:
     """Return the closest known reply for common prompts.
 
     This improves accuracy on the small set of conversation examples that the
     project currently knows well, while generation still handles the rest.
     """
-    pairs = load_conversation_pairs(checkpoint)
+    pairs = load_conversation_pairs(checkpoint, checkpoint_path)
     if not pairs:
         return None
 
@@ -248,7 +276,11 @@ def generate_reply(
     checkpoint, _, _, _ = load_checkpoint(checkpoint_path)
     normalized_prompt = normalize_prompt(prompt)
 
-    retrieved_reply = find_retrieved_reply(normalized_prompt, checkpoint)
+    retrieved_reply = find_retrieved_reply(
+        normalized_prompt,
+        checkpoint,
+        checkpoint_path,
+    )
     if retrieved_reply is not None:
         return retrieved_reply
 
