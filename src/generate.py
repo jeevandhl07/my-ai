@@ -121,11 +121,22 @@ def choose_seed_prompt(prompt: str, checkpoint: dict, stoi: dict[str, int]) -> s
     training_text = load_training_text(checkpoint)
     if not training_text:
         filtered = "".join(char for char in prompt if char in stoi)
-        return filtered or "hello"
+        return filtered or "my ai"
 
     filtered_prompt = "".join(char for char in prompt if char in stoi)
     if not filtered_prompt:
-        return "hello"
+        return "my ai"
+
+    greeting_expansions = {
+        "hi": "hi there",
+        "hey": "hey there",
+        "hello": "hello there",
+        "greetings": "greetings friend",
+        "welcome": "welcome friend",
+    }
+
+    if filtered_prompt in greeting_expansions:
+        return greeting_expansions[filtered_prompt]
 
     if filtered_prompt in training_text:
         return filtered_prompt
@@ -146,10 +157,7 @@ def choose_seed_prompt(prompt: str, checkpoint: dict, stoi: dict[str, int]) -> s
             best_score = score
             best_word = word
 
-    if len(filtered_prompt) <= 2:
-        return best_word or filtered_prompt
-
-    if best_word and filtered_prompt[0] == best_word[0]:
+    if len(filtered_prompt) >= 2:
         return filtered_prompt
 
     return best_word or filtered_prompt

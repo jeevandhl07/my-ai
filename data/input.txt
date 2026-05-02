@@ -1,17 +1,41 @@
 hello world this is my first ai model
 hello friend my ai can answer simple prompts
 hello there i am learning step by step
+hello there how are you
+hello there i can generate short text
+hello friend welcome to my ai project
 hi there this is my personal ai project
 hi friend i can generate small text
 hi there i am a tiny language model
+hi there how are you today
+hi friend welcome back
+hi i am learning from simple text data
 hey there this is my first ai
 hey friend i am learning from text
 hey there my ai is getting better
+hey there how is your day
+hey friend this model is still small
 greetings friend this model learns patterns
+greetings i am your small personal ai
+greetings friend welcome here
 my ai can say hello hi and hey
 my ai is small but improving every day
+my ai can answer with short simple lines
+my ai learns from repeated examples
 this model learns from simple training text
 this project is a personal ai experiment
+this ai project is built from scratch
 i am building my own ai model from scratch
+i am training a small model with pytorch
+i can generate short responses from prompts
 my first ai can generate short responses
-hello world hi there hey friend
+my first ai is learning greetings and replies
+how are you i am doing well
+how are you today i am doing fine
+nice to meet you my name is my ai
+welcome friend this is my first ai
+welcome back i am ready to respond
+good morning friend
+good evening friend
+good night friend
+hello hi hey greetings welcome friend
