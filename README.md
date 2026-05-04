@@ -2,7 +2,7 @@
 
 My first AI
 
-Current training accuracy: 96%
+Current training accuracy: 86%
 
 ## Install
 
