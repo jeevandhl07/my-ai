@@ -1,53 +1,37 @@
-# my-ai
+# My AI
 
-My first AI
+My first small AI chatbot.
 
-Current training accuracy: 86%
+Current training accuracy: **90.79%**
 
-## Install
+## Run This Project
+
+Install packages:
 
 ```bash
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
 
-## Train
+Train the AI:
 
 ```bash
-python src/train.py
+python3 src/train.py --data-path data/merged_input.txt --checkpoint-path checkpoints/merged_ai_checkpoint.pt --epochs 300 --sequence-length 64
 ```
 
-Train with custom settings:
+Chat with the AI:
 
 ```bash
-python src/train.py --epochs 800 --sequence-length 16
+python3 src/chat.py --checkpoint-path checkpoints/merged_ai_checkpoint.pt
 ```
 
-Resume training from the latest checkpoint:
+Generate one reply:
 
 ```bash
-python src/train.py --resume --epochs 400
-```
-
-## Generate
-
-```bash
-python src/generate.py
-```
-
-Generate with your own prompt:
-
-```bash
-python src/generate.py --prompt "hello" --max-new-tokens 40 --temperature 0.8
-```
-
-Generate with top-k sampling:
-
-```bash
-python src/generate.py --prompt "hello" --max-new-tokens 40 --temperature 0.8 --top-k 5
+python3 src/generate.py --checkpoint-path checkpoints/merged_ai_checkpoint.pt --prompt "hello"
 ```
 
 Show saved model info:
 
 ```bash
-python src/generate.py --show-info
+python3 src/generate.py --checkpoint-path checkpoints/merged_ai_checkpoint.pt --show-info
 ```
