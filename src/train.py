@@ -27,14 +27,15 @@ def parse_args() -> argparse.Namespace:
     """Parse command-line arguments for training."""
     parser = argparse.ArgumentParser(description="Train the character model.")
     parser.add_argument("--data-path", type=Path, default=Path("data/input.txt"))
-    parser.add_argument("--sequence-length", type=int, default=12)
-    parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--embed-dim", type=int, default=32)
-    parser.add_argument("--hidden-dim", type=int, default=96)
-    parser.add_argument("--learning-rate", type=float, default=0.003)
+    parser.add_argument("--sequence-length", type=int, default=64)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--embed-dim", type=int, default=128)
+    parser.add_argument("--hidden-dim", type=int, default=256)
+    parser.add_argument("--learning-rate", type=float, default=0.001)
     parser.add_argument("--epochs", type=int, default=1500)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--checkpoint-path", type=Path, default=Path("checkpoints/ultrachat_lm.pt"))
+    parser.add_argument("--grad-clip", type=float, default=1.0)
     parser.add_argument("--resume", action="store_true")
     return parser.parse_args()
 
@@ -105,6 +106,12 @@ def train(args: argparse.Namespace) -> None:
         data_path=data_path,
     )
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    print(
+        "Training on "
+        f"{len(dataset):,} samples, {dataset.tokenizer.vocab_size} characters, "
+        f"sequence length {args.sequence_length}, batch size {args.batch_size}",
+        flush=True,
+    )
 
     model = SimpleLanguageModel(
         vocab_size=dataset.tokenizer.vocab_size,
@@ -142,6 +149,8 @@ def train(args: argparse.Namespace) -> None:
             )
 
             loss.backward()
+            if args.grad_clip > 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
             optimizer.step()
 
             total_loss += loss.item()
@@ -150,12 +159,11 @@ def train(args: argparse.Namespace) -> None:
         best_loss = min(best_loss, average_loss)
         current_epoch = start_epoch + epoch + 1
 
-        if current_epoch % 50 == 0 or epoch == 0:
-            print(f"Epoch {current_epoch} - Loss: {average_loss:.4f}")
+        print(f"Epoch {epoch + 1}/{args.epochs} - Loss: {average_loss:.4f}", flush=True)
 
         # Stop early once the model has mostly memorized this tiny training text.
         if average_loss < 0.015:
-            print(f"Early stopping at epoch {current_epoch} with loss {average_loss:.4f}")
+            print(f"Early stopping at epoch {current_epoch} with loss {average_loss:.4f}", flush=True)
             break
 
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
