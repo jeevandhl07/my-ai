@@ -1,12 +1,12 @@
 """Generate text with the trained character-level model."""
 
 import argparse
-from difflib import SequenceMatcher
 from pathlib import Path
 
 import torch
 
 from model import SimpleLanguageModel
+from qa_engine import answer_math_question, build_index
 
 
 CHECKPOINT_PATH = Path(__file__).resolve().parent.parent / "checkpoints" / "personal_ai_checkpoint.pt"
@@ -138,17 +138,7 @@ def load_conversation_pairs(
     if path is None:
         return []
 
-    pairs: list[tuple[str, str]] = []
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or "user:" not in line or "ai:" not in line:
-            continue
-
-        user_part = line.split("user:", 1)[1].split("ai:", 1)[0].strip().lower()
-        ai_part = line.split("ai:", 1)[1].split("<eos>", 1)[0].strip()
-        pairs.append((user_part, ai_part))
-
-    return pairs
+    return build_index(path).pairs
 
 
 def find_retrieved_reply(
@@ -161,26 +151,11 @@ def find_retrieved_reply(
     This improves accuracy on the small set of conversation examples that the
     project currently knows well, while generation still handles the rest.
     """
-    pairs = load_conversation_pairs(checkpoint, checkpoint_path)
-    if not pairs:
+    path = resolve_data_path(checkpoint, checkpoint_path)
+    if path is None:
         return None
-
-    best_reply = None
-    best_score = 0.0
-
-    for known_prompt, known_reply in pairs:
-        if prompt == known_prompt:
-            return known_reply
-
-        score = SequenceMatcher(a=prompt, b=known_prompt).ratio()
-        if score > best_score:
-            best_score = score
-            best_reply = known_reply
-
-    if best_score >= 0.86:
-        return best_reply
-
-    return None
+    match = build_index(path).search(prompt)
+    return match.answer if match else None
 
 
 def extract_reply(generated_text: str) -> str:
@@ -275,6 +250,10 @@ def generate_reply(
     """Return one assistant reply for a chat-style prompt."""
     checkpoint, _, _, _ = load_checkpoint(checkpoint_path)
     normalized_prompt = normalize_prompt(prompt)
+
+    math_reply = answer_math_question(normalized_prompt)
+    if math_reply is not None:
+        return math_reply
 
     retrieved_reply = find_retrieved_reply(
         normalized_prompt,
